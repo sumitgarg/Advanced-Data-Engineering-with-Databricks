@@ -55,7 +55,9 @@
 # COMMAND ----------
 
 # TODO
-df = FILL_IN
+df = (
+    spark.readStream.format("delta").option("maxFilesPerTrigger",1).load(DA.paths.events)
+)
 
 # COMMAND ----------
 
@@ -80,10 +82,15 @@ DA.validate_1_1(df)
 
 # COMMAND ----------
 
-# TODO
-spark.FILL_IN
+display(df)
 
-traffic_df = df.FILL_IN
+# COMMAND ----------
+
+# TODO
+spark.conf.set("spark.sql.shuffle.partitions",4)
+from pyspark.sql.functions import count
+traffic_df = df.groupBy("traffic_source").agg(count("user_id").alias("active_users"))
+display(traffic_df)
 
 # COMMAND ----------
 
@@ -107,7 +114,7 @@ DA.validate_2_1(traffic_df.schema)
 
 # COMMAND ----------
 
-# TODO
+display(traffic_df)
 
 # COMMAND ----------
 
@@ -130,7 +137,13 @@ DA.validate_2_1(traffic_df.schema)
 # COMMAND ----------
 
 # TODO
-traffic_query = (traffic_df.FILL_IN
+traffic_query = (traffic_df
+                 .writeStream
+                 .queryName("active_users_by_traffic")
+                 .format("memory")
+                 .outputMode("complete")
+                 .trigger(processingTime="1 second")
+                 .start()
 )
 
 # COMMAND ----------
@@ -154,7 +167,7 @@ DA.validate_4_1(traffic_query)
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- TODO
+# MAGIC select * from active_users_by_traffic
 
 # COMMAND ----------
 
@@ -183,7 +196,9 @@ DA.validate_4_1(traffic_query)
 
 # COMMAND ----------
 
-# TODO
+for s in spark.streams.active:
+    print(s.name)
+    s.stop()
 
 # COMMAND ----------
 
